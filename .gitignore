@@ -25,3 +25,7 @@ __pycache__
 # Automatically downloaded
 langServerInstall
 debugAdapterInstall
+
+# KLS fork (separate git repo)
+kotlin-language-server/
+kls-migration-mini/
