@@ -18,6 +18,14 @@ node_modules/**
 bin/**
 build/**
 
+# Local docs and KLS fork (separate git repos, not shipped)
+dev-docs/**
+kotlin-language-server/**
+kls-migration-mini/**
+
+# Local build logs
+build-*.log
+
 # Automatically downloaded
 resources/langServerInstall
 resources/debugAdapterInstall

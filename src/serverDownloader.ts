@@ -26,19 +26,20 @@ export class ServerDownloader {
         private readonly assetName: string,
         private readonly extractedName: string,
         private readonly installDir: string,
+        private readonly githubOwner: string = "fwcd",
     ) {}
-    
+
     private async latestReleaseInfo(): Promise<GitHubReleasesAPIResponse> {
-        const rawJson = await requestPromise.get(`https://api.github.com/repos/fwcd/${this.githubProjectName}/releases/latest`, {
+        const rawJson = await requestPromise.get(`https://api.github.com/repos/${this.githubOwner}/${this.githubProjectName}/releases/latest`, {
             headers: { "User-Agent": "vscode-kotlin-ide" }
         });
         return JSON.parse(rawJson) as GitHubReleasesAPIResponse;
     }
-    
+
     private serverInfoFile(): string {
         return path.join(this.installDir, "SERVER-INFO");
     }
-    
+
     private async installedServerInfo(): Promise<ServerInfo> {
         try {
             const info = JSON.parse((await fs.promises.readFile(this.serverInfoFile())).toString("utf8")) as ServerInfo;
@@ -47,22 +48,22 @@ export class ServerDownloader {
             return null;
         }
     }
-    
+
     private async updateInstalledServerInfo(info: ServerInfo): Promise<void> {
         await fs.promises.writeFile(this.serverInfoFile(), JSON.stringify(info), { encoding: "utf8" });
     }
-    
+
     private async downloadServer(downloadUrl: string, version: string, status: Status): Promise<void> {
         if (!(await fsExists(this.installDir))) {
             await fs.promises.mkdir(this.installDir, { recursive: true });
         }
-        
+
         const downloadDest = path.join(this.installDir, `download-${this.assetName}`);
         status.update(`Downloading ${this.displayName} ${version}...`);
         await download(downloadUrl, downloadDest, percent => {
             status.update(`Downloading ${this.displayName} ${version} :: ${(percent * 100).toFixed(2)} %`);
         });
-        
+
         status.update(`Unpacking ${this.displayName} ${version}...`);
         const extractedDir = path.join(this.installDir, this.extractedName);
         if (await fsExists(extractedDir)) {
@@ -70,7 +71,7 @@ export class ServerDownloader {
         }
         await extractZip(downloadDest, { dir: this.installDir });
         await fs.promises.unlink(downloadDest);
-        
+
         status.update(`Initializing ${this.displayName}...`);
     }
 
@@ -78,7 +79,7 @@ export class ServerDownloader {
      * Checks if there are any duplicate libraries caused by an invalid language
      * server update by an older version of the extension, that would require
      * the server to be reinstalled.
-     * 
+     *
      * See https://github.com/fwcd/vscode-kotlin/issues/119#issuecomment-1567203029.
      */
     private async checkIfInstallationIsCorrupt(): Promise<string | null> {
@@ -103,18 +104,18 @@ export class ServerDownloader {
 
         return null;
     }
-    
+
     async downloadServerIfNeeded(status: Status): Promise<void> {
         const serverInfo = await this.installedServerInfo();
         const serverInfoOrDefault = serverInfo || { version: "0.0.0", lastUpdate: Number.MIN_SAFE_INTEGER };
         const secondsSinceLastUpdate = (Date.now() - serverInfoOrDefault.lastUpdate) / 1000;
-        
+
         if (secondsSinceLastUpdate > 480) {
             // Only query GitHub API for latest version if some time has passed
             LOG.info(`Querying GitHub API for new ${this.displayName} version...`);
-            
+
             let releaseInfo: GitHubReleasesAPIResponse;
-            
+
             try {
                 releaseInfo = await this.latestReleaseInfo();
             } catch (error) {
@@ -129,7 +130,7 @@ export class ServerDownloader {
                     return;
                 }
             }
-            
+
             const latestVersion = releaseInfo.tag_name;
             const installedVersion = serverInfoOrDefault.version;
             const serverNeedsUpdate = semver.gt(latestVersion, installedVersion);
@@ -139,7 +140,7 @@ export class ServerDownloader {
             if (installationCorruptReason) {
                 LOG.warn(`The ${this.displayName} installation is corrupt (${installationCorruptReason}), the server will be reinstalled...`);
             }
-            
+
             if (serverNeedsUpdate || installationCorruptReason) {
                 const serverAsset = releaseInfo.assets.find(asset => asset.name === this.assetName);
                 if (serverAsset) {
@@ -150,7 +151,7 @@ export class ServerDownloader {
                 }
                 newVersion = latestVersion;
             }
-            
+
             await this.updateInstalledServerInfo({
                 version: newVersion,
                 lastUpdate: Date.now()
