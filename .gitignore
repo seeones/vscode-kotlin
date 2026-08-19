@@ -29,3 +29,6 @@ debugAdapterInstall
 # KLS fork (separate git repo)
 kotlin-language-server/
 kls-migration-mini/
+
+# Local dev docs (tracked only on local-docs branch, never pushed)
+dev-docs/
